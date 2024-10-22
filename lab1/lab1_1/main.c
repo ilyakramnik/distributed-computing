@@ -9,13 +9,13 @@ int total_attempts;
 pthread_mutex_t mutex_lock;
 
 void* calculate_pi(void* arg) {
-    srand(time(NULL) ^ pthread_self());
+    unsigned int seed = time(NULL) + pthread_self();
     int local_hits = 0;
     int attempts_per_thread = *(int*)arg;
 
     for (int i = 0; i < attempts_per_thread; ++i) {
-        double x = ((double)rand() / RAND_MAX) * 2.0 - 1.0;
-        double y = ((double)rand() / RAND_MAX) * 2.0 - 1.0;
+        double x = ((double)rand_r(&seed) / RAND_MAX) * 2.0 - 1.0;
+        double y = ((double)rand_r(&seed) / RAND_MAX) * 2.0 - 1.0;
 
         if (x * x + y * y <= 1.0) {
             ++local_hits;
@@ -55,18 +55,19 @@ void destroy_mutex() {
     pthread_mutex_destroy(&mutex_lock);
 }
 
-void estimate_pi(int total_attempts) {
+double estimate_pi(int total_attempts) {
     double pi_estimation = 4.0 * (double)global_hits / (double)total_attempts;
     printf("Estimated value of Pi: %f\n", pi_estimation);
+    return pi_estimation;
 }
 
-void log_results_to_file(int num_threads, int total_attempts, double execution_time) {
+void log_results_to_file(int num_threads, int total_attempts, double execution_time, double pi_estimation) {
     FILE* file = fopen("results.txt", "a");
     if (file == NULL) {
         fprintf(stderr, "Error: unable to open file for logging\n");
         exit(EXIT_FAILURE);
     }
-    fprintf(file, "%d, %d, %f\n", num_threads, total_attempts, execution_time);
+    fprintf(file, "%d, %d, %f, %f\n", num_threads, total_attempts, execution_time, pi_estimation);
     fclose(file);
 }
 
@@ -94,7 +95,7 @@ int main(int argc, char* argv[]) {
     initialize_mutex();
     create_threads(threads, num_threads, attempts_per_thread);
     join_threads(threads, num_threads);
-    estimate_pi(total_attempts);
+    double pi_estimation = estimate_pi(total_attempts);
     destroy_mutex();
 
     GET_TIME(finish);
@@ -103,7 +104,7 @@ int main(int argc, char* argv[]) {
 
     printf("Execution time: %f seconds\n", execution_time);
 
-    log_results_to_file(num_threads, total_attempts, execution_time);
+    log_results_to_file(num_threads, total_attempts, execution_time, pi_estimation);
 
     return EXIT_SUCCESS;
 }
